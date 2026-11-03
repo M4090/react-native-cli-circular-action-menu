@@ -1,19 +1,22 @@
 {
-  "name": "react-native-circular-action-menu",
-  "version": "1.0.0",
-  "description": "Circular action menu for React Native",
+  "name": "react-native-cli-circular-action-menu",
+  "version": "1.0.2",
+  "description": "A TypeScript React Native circular action menu.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "source": "src/index.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "prepare": "npm run build"
+  },
   "peerDependencies": {
-    "react": ">=17",
-    "react-native": ">=0.64"
+    "react": "*",
+    "react-native": "*"
   },
   "devDependencies": {
-    "@types/react": "^19.3.0",
+    "@types/react": "^19.0.0",
     "typescript": "^5.0.0"
-  },
-  "scripts": {
-    "build": "tsc -p tsconfig.json"
   }
 }

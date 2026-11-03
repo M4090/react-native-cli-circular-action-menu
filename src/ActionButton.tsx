@@ -13,7 +13,6 @@ import React, {
 import {
   Animated,
   StyleSheet,
-  Text,
   TouchableOpacity,
   TouchableWithoutFeedback,
   View,
@@ -51,9 +50,15 @@ export interface ActionButtonProps {
   style?: StyleProp<ViewStyle>;
 }
 
+const BASE_PADDING = 10;
+
 const positionDefaults: Record<
   ActionButtonPosition,
-  { alignItems: 'center' | 'flex-start' | 'flex-end'; startDegree: number; endDegree: number }
+  {
+    alignItems: 'center' | 'flex-start' | 'flex-end';
+    startDegree: number;
+    endDegree: number;
+  }
 > = {
   center: { alignItems: 'center', startDegree: 180, endDegree: 360 },
   left: { alignItems: 'flex-start', startDegree: 270, endDegree: 360 },
@@ -108,11 +113,7 @@ const ActionButtonRoot: React.FC<ActionButtonProps> = ({
   );
 
   const toggle = useCallback(() => {
-    if (active) {
-      animateTo(0);
-    } else {
-      animateTo(1);
-    }
+    animateTo(active ? 0 : 1);
   }, [active, animateTo]);
 
   const handleMainPress = () => {
@@ -123,6 +124,9 @@ const ActionButtonRoot: React.FC<ActionButtonProps> = ({
   const alignment = positionDefaults[position];
   const actualStart = startDegree ?? alignment.startDegree;
   const actualEnd = endDegree ?? alignment.endDegree;
+
+  // Small items must be centered on the (bigger) main button.
+  const inset = Math.max(0, (size - itemSize) / 2);
 
   const renderedItems = useMemo(() => {
     const childArray = Children.toArray(children);
@@ -138,7 +142,18 @@ const ActionButtonRoot: React.FC<ActionButtonProps> = ({
       const originalOnPress = childElement.props.onPress;
 
       return (
-        <View key={childElement.key ?? index} pointerEvents="box-none" style={styles.actionContainer}>
+        <View
+          key={childElement.key ?? index}
+          pointerEvents="box-none"
+          style={[
+            styles.actionContainer,
+            {
+              alignItems: alignment.alignItems,
+              paddingBottom: BASE_PADDING + inset,
+              paddingHorizontal: BASE_PADDING + inset,
+            },
+          ]}
+        >
           {cloneElement(childElement, {
             radius,
             size: itemSize,
@@ -147,6 +162,7 @@ const ActionButtonRoot: React.FC<ActionButtonProps> = ({
             onPress: () => {
               originalOnPress?.();
               if (autoInactive) {
+                if (timeout.current) clearTimeout(timeout.current);
                 timeout.current = setTimeout(() => animateTo(0), 200);
               }
             },
@@ -154,7 +170,18 @@ const ActionButtonRoot: React.FC<ActionButtonProps> = ({
         </View>
       );
     });
-  }, [children, actualStart, actualEnd, radius, itemSize, anim, autoInactive, animateTo]);
+  }, [
+    children,
+    actualStart,
+    actualEnd,
+    radius,
+    itemSize,
+    inset,
+    alignment.alignItems,
+    anim,
+    autoInactive,
+    animateTo,
+  ]);
 
   const buttonBackground = anim.interpolate({
     inputRange: [0, 1],
@@ -168,10 +195,18 @@ const ActionButtonRoot: React.FC<ActionButtonProps> = ({
     inputRange: [0, 1],
     outputRange: ['0deg', `${degrees}deg`],
   });
+  const textColor = anim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [buttonTextColor, btnOutRangeTxt],
+  });
 
   return (
     <View pointerEvents="box-none" style={[styles.overlay, style]}>
-      {active && (
+      {/* Backdrop: always mounted so it can fade, but only touchable when open */}
+      <View
+        pointerEvents={active ? 'auto' : 'none'}
+        style={StyleSheet.absoluteFill}
+      >
         <TouchableWithoutFeedback
           onPress={() => {
             animateTo(0);
@@ -181,20 +216,27 @@ const ActionButtonRoot: React.FC<ActionButtonProps> = ({
           <Animated.View
             style={[
               styles.backdrop,
-              {
-                backgroundColor: bgColor,
-                opacity: anim,
-              },
+              { backgroundColor: bgColor, opacity: anim },
             ]}
           >
             {backdrop}
           </Animated.View>
         </TouchableWithoutFeedback>
-      )}
+      </View>
 
-      {active && renderedItems}
+      {/* Items: always mounted so the close animation plays */}
+      <View
+        pointerEvents={active ? 'box-none' : 'none'}
+        style={StyleSheet.absoluteFill}
+      >
+        {renderedItems}
+      </View>
 
-      <View pointerEvents="box-none" style={[styles.actionContainer, { alignItems: alignment.alignItems }]}>
+      {/* Main button (rendered last so it stays on top) */}
+      <View
+        pointerEvents="box-none"
+        style={[styles.actionContainer, { alignItems: alignment.alignItems }]}
+      >
         <TouchableOpacity
           activeOpacity={0.85}
           onLongPress={onLongPress}
@@ -213,17 +255,7 @@ const ActionButtonRoot: React.FC<ActionButtonProps> = ({
             ]}
           >
             {icon ?? (
-              <Animated.Text
-                style={[
-                  styles.buttonText,
-                  {
-                    color: anim.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [buttonTextColor, btnOutRangeTxt],
-                    }),
-                  },
-                ]}
-              >
+              <Animated.Text style={[styles.buttonText, { color: textColor }]}>
                 +
               </Animated.Text>
             )}
@@ -240,20 +272,16 @@ const ActionButton = Object.assign(ActionButtonRoot, {
 
 const styles = StyleSheet.create({
   overlay: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    top: 0,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'transparent',
   },
   backdrop: {
-	...StyleSheet.absoluteFill,
+    ...StyleSheet.absoluteFill,
   },
   actionContainer: {
-    flexDirection: 'column',
+    ...StyleSheet.absoluteFill,
     justifyContent: 'flex-end',
-    padding: 10,
+    padding: BASE_PADDING,
   },
   mainButton: {
     justifyContent: 'center',

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import {
   Animated,
   StyleSheet,
@@ -32,7 +32,10 @@ const ActionButtonItem: React.FC<ActionButtonItemProps> = ({
   activeOpacity = 0.85,
   style,
 }) => {
-  const animation = anim ?? new Animated.Value(1);
+  // Stable fallback value (a new Animated.Value every render would reset animations)
+  const fallback = useRef(new Animated.Value(1)).current;
+  const animation = anim ?? fallback;
+
   const offsetX = radius * Math.cos(angle);
   const offsetY = radius * Math.sin(angle);
 
@@ -72,7 +75,12 @@ const ActionButtonItem: React.FC<ActionButtonItemProps> = ({
         activeOpacity={activeOpacity}
         onPress={onPress}
       >
-        <View style={[styles.shadowContainer, { width: size, height: size, borderRadius: size / 2 }]}>
+        <View
+          style={[
+            styles.shadowContainer,
+            { width: size, height: size, borderRadius: size / 2 },
+          ]}
+        >
           <View
             style={[
               styles.actionButton,
